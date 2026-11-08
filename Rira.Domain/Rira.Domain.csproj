@@ -10,7 +10,6 @@
     <Folder Include="Common\" />
     <Folder Include="Entities\" />
     <Folder Include="Repositories\" />
-    <Folder Include="ValueObjects\" />
   </ItemGroup>
 
 </Project>
