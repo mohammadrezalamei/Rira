@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Rira.Application\Rira.Application.csproj" />
     <ProjectReference Include="..\Rira.Domain\Rira.Domain.csproj" />
+    <ProjectReference Include="..\Rira.Infrastructure\Rira.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
