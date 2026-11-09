@@ -9,7 +9,7 @@ public interface IPersonRepository
         Guid id,
         CancellationToken cancellationToken = default);
 
-    Task<bool> ExistsByNationalCodeAsync(
+    Task<Person?> GetByNationalCodeAsync(
         NationalCode nationalCode,
         Guid? excludedPersonId = null,
         CancellationToken cancellationToken = default);

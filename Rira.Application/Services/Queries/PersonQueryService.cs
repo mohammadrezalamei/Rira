@@ -1,8 +1,8 @@
 ﻿using Rira.Application.Contracts.Persistence;
+using Rira.Application.Contracts.Services;
 using Rira.Application.DTOs.Persons;
 using Rira.Domain.Common;
 using Rira.Domain.ValueObjects;
-using Rira_Application.Contracts.Services;
 
 namespace Rira.Application.Services.Queries;
 
