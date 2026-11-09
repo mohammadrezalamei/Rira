@@ -1,7 +1,7 @@
 ﻿using Rira.Application.DTOs.Persons;
 using Rira.Domain.Common;
 
-namespace Rira_Application.Contracts.Services;
+namespace Rira.Application.Contracts.Services;
 
 public interface IPersonQueryService
 {
