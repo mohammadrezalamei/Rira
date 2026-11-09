@@ -11,8 +11,4 @@
 		<ProjectReference Include="..\Rira.Domain\Rira.Domain.csproj" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<Folder Include="Services\Commands\" />
-	</ItemGroup>
-
 </Project>
