@@ -1,10 +1,31 @@
+using Rira.Application.Contracts.Services;
+using Rira.Application.Services.Commands;
+using Rira.Application.Services.Queries;
+using Rira.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddGrpc();
+var connectionString = builder.Configuration.GetConnectionString("Rira");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "Connection string 'Rira' is not configured.");
+}
+
+builder.Services.AddInfrastructure(connectionString);
+
+builder.Services.AddScoped<IPersonCommandService, PersonCommandService>();
+builder.Services.AddScoped<IPersonQueryService, PersonQueryService>();
+
+builder.Services.AddGrpc(options =>
+{
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+});
 
 var app = builder.Build();
 
-app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
+app.MapGet("/", () =>
+    "Rira gRPC host is running. Use a gRPC client to call the services.");
 
 app.Run();
