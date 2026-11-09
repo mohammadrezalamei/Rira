@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Contracts\Services\" />
     <Folder Include="Services\Commands\" />
+    <Folder Include="Services\Queries\" />
   </ItemGroup>
 
 </Project>
