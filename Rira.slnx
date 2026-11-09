@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Technical Presentation.pdf" />
+  </Folder>
   <Folder Name="/SRC/">
     <Project Path="Rira.Application/Rira.Application.csproj" Id="34863209-bd30-4b92-82de-f5554fa59d06" />
     <Project Path="Rira.Domain/Rira.Domain.csproj" Id="905f5eca-8852-4eca-9515-cb2dc5ee8d2d" />
