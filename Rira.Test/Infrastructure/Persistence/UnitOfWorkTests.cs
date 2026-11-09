@@ -60,6 +60,28 @@ public class UnitOfWorkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task UniqueViolation_ReturnsGenericConflictForAnyUniqueField(bool useAdditionalIndex)
+    {
+        await using var database = new SqliteTestDatabase();
+        await database.InitializeAsync();
+        await database.SeedAsync(SqliteTestDatabase.Person());
+        await using var context = database.CreateContext();
+        if (useAdditionalIndex)
+            await context.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IX_Test_FirstName ON Persons (FirstName)");
+
+        context.Add(SqliteTestDatabase.Person(useAdditionalIndex ? "1234567891" : "0123456789"));
+        var result = await SqliteTestDatabase.UnitOfWork(context).SaveChangesAsync();
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Conflict, result.ErrorType);
+        Assert.Equal("اطلاعات تکراری است؛ مقدار فیلدهای یکتا را بررسی کنید.", result.Message);
+        Assert.Empty(context.ChangeTracker.Entries());
+        Assert.Equal(1, await context.Persons.CountAsync());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task StaleUpdateOrDelete_ReturnsConflictWithoutOverwritingWinner(bool delete)
     {
         await using var database = new SqliteTestDatabase();

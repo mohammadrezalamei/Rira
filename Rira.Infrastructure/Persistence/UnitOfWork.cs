@@ -10,31 +10,31 @@ public sealed class UnitOfWork(RiraDbContext context, ILogger<UnitOfWork> logger
 {
     public async Task<Result> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        var committed = false;
+
         try
         {
             await context.SaveChangesAsync(cancellationToken);
+            committed = true;
             return Result.Success();
         }
         catch (DbUpdateConcurrencyException)
         {
-            DiscardChanges();
             return Result.Failure("اطلاعات توسط درخواست دیگری تغییر کرده است؛ دوباره دریافت کنید.", ErrorType.Conflict);
         }
         catch (DbUpdateException exception) when (exception.InnerException is SqliteException { SqliteExtendedErrorCode: 2067 })
         {
-            DiscardChanges();
-            return Result.Failure("شخصی با این کد ملی قبلاً ثبت شده است.", ErrorType.Conflict);
+            return Result.Failure("اطلاعات تکراری است؛ مقدار فیلدهای یکتا را بررسی کنید.", ErrorType.Conflict);
         }
         catch (DbUpdateException exception)
         {
             logger.LogError(exception, "Failed to save person changes.");
-            DiscardChanges();
             return Result.Failure("ذخیره اطلاعات با خطا مواجه شد.", ErrorType.ServerError);
         }
-        catch
+        finally
         {
-            DiscardChanges();
-            throw;
+            if (!committed)
+                DiscardChanges();
         }
     }
 
@@ -42,13 +42,8 @@ public sealed class UnitOfWork(RiraDbContext context, ILogger<UnitOfWork> logger
     {
         foreach (var entry in context.ChangeTracker.Entries().ToList())
         {
-            if (entry.State == EntityState.Added)
-                entry.State = EntityState.Detached;
-            else if (entry.State is EntityState.Modified or EntityState.Deleted)
-            {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
                 entry.CurrentValues.SetValues(entry.OriginalValues);
-                entry.State = EntityState.Unchanged;
-            }
         }
         // A failed operation ends this tracking session. Subsequent reads reload current data.
         context.ChangeTracker.Clear();

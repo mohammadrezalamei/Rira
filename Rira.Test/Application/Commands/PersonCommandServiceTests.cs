@@ -124,12 +124,11 @@ public class PersonCommandServiceTests
     [InlineData("create", "cancel")]
     [InlineData("update", "cancel")]
     [InlineData("delete", "cancel")]
-    public async Task FailedSave_DiscardsPendingChangesAndRestoresPerson(string operation, string outcome)
+    public async Task FailedSave_PropagatesOutcomeWithoutRepeatingUnitOfWorkCleanup(string operation, string outcome)
     {
         var person = Person();
         var id = person.Id;
         SetupOperation(operation, person, default);
-        _unitOfWork.Setup(x => x.DiscardChanges());
         var save = _unitOfWork.Setup(x => x.SaveChangesAsync(default));
         if (outcome == "failure")
         {
@@ -150,24 +149,18 @@ public class PersonCommandServiceTests
             save.ThrowsAsync(new OperationCanceledException());
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Execute(operation, id, default));
         }
-        _unitOfWork.Verify(x => x.DiscardChanges(), Times.Once);
-        Assert.Equal(id, person.Id);
-        Assert.Equal("Old", person.FirstName);
-        Assert.Equal("Name", person.LastName);
-        Assert.Equal("0123456789", person.NationalCode.Value);
-        Assert.Equal(Birth, person.BirthDate.Value);
+        _unitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Once);
+        _unitOfWork.Verify(x => x.DiscardChanges(), Times.Never);
     }
 
     [Fact]
-    public async Task RepositoryUpdateException_RestoresPersonAndDiscardsChanges()
+    public async Task RepositoryUpdateException_RequestsCleanupWithoutSaving()
     {
         var person = Person();
         SetupOperation("update", person, default);
         _repository.Setup(x => x.Update(person)).Throws(new InvalidOperationException());
         _unitOfWork.Setup(x => x.DiscardChanges());
         await Assert.ThrowsAsync<InvalidOperationException>(() => Execute("update", person.Id, default));
-        Assert.Equal("Old", person.FirstName);
-        Assert.Equal("0123456789", person.NationalCode.Value);
         _unitOfWork.Verify(x => x.DiscardChanges(), Times.Once);
         _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }

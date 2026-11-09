@@ -116,18 +116,12 @@ public sealed class PersonCommandService : IPersonCommandService
                 "شخصی با این کد ملی قبلاً ثبت شده است.",
                 ErrorType.Conflict);
 
-        var previousFirstName = person.FirstName;
-        var previousLastName = person.LastName;
-        var previousNationalCode = person.NationalCode;
-        var previousBirthDate = person.BirthDate;
-        var today = GetToday();
-
         var updateResult = person.Update(
             request.FirstName,
             request.LastName,
             nationalCodeResult.Value!.Value,
             request.BirthDate,
-            today);
+            GetToday());
 
         if (!updateResult.IsSuccess)
             return Result<PersonResponseDto>.Failure(
@@ -140,13 +134,7 @@ public sealed class PersonCommandService : IPersonCommandService
                 _personRepository.Update(person);
                 return Task.CompletedTask;
             },
-            cancellationToken,
-            () => person.Update(
-                previousFirstName,
-                previousLastName,
-                previousNationalCode.Value,
-                previousBirthDate.Value,
-                today));
+            cancellationToken);
 
         if (!saveResult.IsSuccess)
             return Result<PersonResponseDto>.Failure(
@@ -186,27 +174,21 @@ public sealed class PersonCommandService : IPersonCommandService
 
     private async Task<Result> PersistAsync(
         Func<Task> stageChanges,
-        CancellationToken cancellationToken,
-        Action? restoreEntity = null)
+        CancellationToken cancellationToken)
     {
-        var committed = false;
-
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
             await stageChanges();
-            var result = await _unitOfWork.SaveChangesAsync(cancellationToken);
-            committed = result.IsSuccess;
-            return result;
         }
-        finally
+        catch
         {
-            if (!committed)
-            {
-                restoreEntity?.Invoke();
-                _unitOfWork.DiscardChanges();
-            }
+            // SaveChangesAsync owns cleanup once saving starts.
+            _unitOfWork.DiscardChanges();
+            throw;
         }
+
+        return await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     private static DateOnly GetToday()

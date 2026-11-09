@@ -1,5 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
+using Rira.Domain.Entities;
+using Rira.Domain.Repositories;
+using Rira.Domain.ValueObjects;
 using Rira.Application.Contracts.Common;
 using Rira.Application.Contracts.Persistence;
 using Rira.Application.DTOs.Persons;
@@ -60,7 +64,7 @@ public class PersonPersistenceIntegrationTests
     }
 
     [Fact]
-    public async Task CompetingCreates_AfterBothPrechecksPass_OnlyOneCanCommit()
+    public async Task SequentialSaves_AfterBothPrechecksPass_RejectDuplicate()
     {
         await using var database = new SqliteTestDatabase();
         await database.InitializeAsync();
@@ -103,6 +107,83 @@ public class PersonPersistenceIntegrationTests
         var retry = await command.UpdateAsync(person.Id,
             new("Changed", "Name", "1234567891", new DateOnly(2000, 1, 1)));
         Assert.True(retry.IsSuccess);
+    }
+
+    [Fact]
+    public async Task ParallelCreates_WithIndependentConnections_CommitOnlyOnePerson()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, $"rira-race-{Guid.NewGuid():N}.db");
+        var connectionString = $"Data Source={path};Pooling=False;Default Timeout=10";
+        try
+        {
+            await using var provider = BuildProvider(connectionString);
+            await using (var setup = provider.CreateAsyncScope())
+                await setup.ServiceProvider.GetRequiredService<RiraDbContext>().Database.MigrateAsync();
+
+            var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var readyCount = 0;
+
+            async Task<Result> CreateAsync()
+            {
+                await using var scope = provider.CreateAsyncScope();
+                var context = scope.ServiceProvider.GetRequiredService<RiraDbContext>();
+                var repository = new PersonRepository(context);
+                var person = SqliteTestDatabase.Person();
+                Assert.Null(await repository.GetByNationalCodeAsync(person.NationalCode));
+                await repository.AddAsync(person);
+                if (Interlocked.Increment(ref readyCount) == 2)
+                    ready.TrySetResult();
+                await ready.Task.WaitAsync(TimeSpan.FromSeconds(15));
+                return await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().SaveChangesAsync();
+            }
+
+            // SQLite's async methods may execute synchronously; separate workers let
+            // independent connections contend after both prechecks have completed.
+            var results = await Task.WhenAll(Task.Run(CreateAsync), Task.Run(CreateAsync));
+            Assert.Single(results, result => result.IsSuccess);
+            var failure = Assert.Single(results, result => !result.IsSuccess);
+            Assert.Equal(ErrorType.Conflict, failure.ErrorType);
+            await using var verify = provider.CreateAsyncScope();
+            Assert.Equal(1, await verify.ServiceProvider.GetRequiredService<RiraDbContext>().Persons.CountAsync());
+        }
+        finally
+        {
+            foreach (var suffix in new[] { "", "-wal", "-shm", "-journal" })
+                File.Delete(path + suffix);
+        }
+    }
+
+    [Fact]
+    public async Task CommandUpdate_CancelledBeforeSave_DiscardsMutationAndReloadsForRetry()
+    {
+        await using var database = new SqliteTestDatabase();
+        await database.InitializeAsync();
+        var person = SqliteTestDatabase.Person();
+        await database.SeedAsync(person);
+        await using var context = database.CreateContext();
+        var repository = new PersonRepository(context);
+        var unit = SqliteTestDatabase.UnitOfWork(context);
+        using var cancellation = new CancellationTokenSource();
+        var wrapper = new Mock<IPersonRepository>(MockBehavior.Strict);
+        wrapper.Setup(x => x.GetByIdAsync(person.Id, cancellation.Token))
+            .Returns(() => repository.GetByIdAsync(person.Id));
+        wrapper.Setup(x => x.GetByNationalCodeAsync(
+                It.IsAny<NationalCode>(), person.Id, cancellation.Token))
+            .ReturnsAsync(() =>
+            {
+                cancellation.Cancel();
+                return (Person?)null;
+            });
+        var command = new PersonCommandService(wrapper.Object, unit);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => command.UpdateAsync(
+            person.Id, new("Changed", "Name", "1234567891", new DateOnly(2000, 1, 1)), cancellation.Token));
+
+        Assert.Empty(context.ChangeTracker.Entries());
+        var reloaded = await repository.GetByIdAsync(person.Id);
+        Assert.Equal("0123456789", reloaded!.NationalCode.Value);
+        Assert.True((await new PersonCommandService(repository, unit).UpdateAsync(
+            person.Id, new("Changed", "Name", "1234567891", new DateOnly(2000, 1, 1)))).IsSuccess);
     }
 
     [Fact]
