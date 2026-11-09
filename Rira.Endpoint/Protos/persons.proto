@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+option csharp_namespace = "Rira.Endpoint.Protos";
+
+package rira.persons.v1;
+
+import "google/protobuf/empty.proto";
+
+service PersonService {
+  rpc CreatePerson (CreatePersonRequest) returns (PersonResponse);
+  rpc UpdatePerson (UpdatePersonRequest) returns (PersonResponse);
+  rpc DeletePerson (DeletePersonRequest) returns (google.protobuf.Empty);
+
+  rpc GetPersonById (GetPersonByIdRequest) returns (PersonResponse);
+  rpc GetPersonByNationalCode (GetPersonByNationalCodeRequest) returns (PersonResponse);
+  rpc GetAllPersons (google.protobuf.Empty) returns (GetAllPersonsResponse);
+}
+
+message Date {
+  int32 year = 1;
+  int32 month = 2;
+  int32 day = 3;
+}
+
+message CreatePersonRequest {
+  string first_name = 1;
+  string last_name = 2;
+  string national_code = 3;
+  Date birth_date = 4;
+}
+
+message UpdatePersonRequest {
+  string id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string national_code = 4;
+  Date birth_date = 5;
+}
+
+message DeletePersonRequest {
+  string id = 1;
+}
+
+message GetPersonByIdRequest {
+  string id = 1;
+}
+
+message GetPersonByNationalCodeRequest {
+  string national_code = 1;
+}
+
+message PersonResponse {
+  string id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string national_code = 4;
+  Date birth_date = 5;
+}
+
+message GetAllPersonsResponse {
+  repeated PersonResponse persons = 1;
+}
