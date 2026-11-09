@@ -11,4 +11,13 @@
     <ProjectReference Include="..\Rira.Domain\Rira.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Contracts\Common\" />
+    <Folder Include="Contracts\Persistence\" />
+    <Folder Include="Contracts\Services\" />
+    <Folder Include="DTOs\Persons\" />
+    <Folder Include="Services\Commands\" />
+    <Folder Include="Services\Queries\" />
+  </ItemGroup>
+
 </Project>
