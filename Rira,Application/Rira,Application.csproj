@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Contracts\Common\" />
     <Folder Include="Contracts\Persistence\" />
     <Folder Include="Contracts\Services\" />
     <Folder Include="DTOs\Persons\" />
