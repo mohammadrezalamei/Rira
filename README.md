@@ -54,3 +54,11 @@ Run Tests
 ```powershell
 dotnet test Rira.slnx -c Release
 ```
+
+## Error Handling
+
+- Invalid input returns `InvalidArgument`; missing people return `NotFound`.
+- Duplicate values return `AlreadyExists`; optimistic concurrency conflicts return `Aborted`.
+- Failed saves discard pending tracked changes. Reload current data before retrying a concurrency conflict.
+- Unexpected exceptions are logged and return a generic `Internal` response without internal details.
+- The interceptor handles request cancellation and deadline expiration with `Cancelled` and `DeadlineExceeded`.

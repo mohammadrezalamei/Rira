@@ -82,7 +82,7 @@ public class UnitOfWorkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task StaleUpdateOrDelete_ReturnsConflictWithoutOverwritingWinner(bool delete)
+    public async Task StaleUpdateOrDelete_ReturnsConcurrencyConflictWithoutOverwritingWinner(bool delete)
     {
         await using var database = new SqliteTestDatabase();
         await database.InitializeAsync();
@@ -98,7 +98,7 @@ public class UnitOfWorkTests
         else
             stale.Update("Loser", "Name", "0123456789", stale.BirthDate.Value, new DateOnly(2026, 1, 1));
         var result = await SqliteTestDatabase.UnitOfWork(loser).SaveChangesAsync();
-        Assert.Equal(ErrorType.Conflict, result.ErrorType);
+        Assert.Equal(ErrorType.ConcurrencyConflict, result.ErrorType);
         Assert.Empty(loser.ChangeTracker.Entries());
         Assert.Equal("Winner", (await loser.Persons.SingleAsync()).FirstName);
     }

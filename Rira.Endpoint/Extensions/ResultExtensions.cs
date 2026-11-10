@@ -45,6 +45,7 @@ public static class ResultExtensions
             ErrorType.Validation => StatusCode.InvalidArgument,
             ErrorType.NotFound => StatusCode.NotFound,
             ErrorType.Conflict => StatusCode.AlreadyExists,
+            ErrorType.ConcurrencyConflict => StatusCode.Aborted,
             ErrorType.ServerError => StatusCode.Internal,
             _ => StatusCode.Internal
         };

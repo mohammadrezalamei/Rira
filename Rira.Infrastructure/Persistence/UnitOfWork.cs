@@ -20,7 +20,7 @@ public sealed class UnitOfWork(RiraDbContext context, ILogger<UnitOfWork> logger
         }
         catch (DbUpdateConcurrencyException)
         {
-            return Result.Failure("اطلاعات توسط درخواست دیگری تغییر کرده است؛ دوباره دریافت کنید.", ErrorType.Conflict);
+            return Result.Failure("اطلاعات توسط درخواست دیگری تغییر کرده است؛ دوباره دریافت کنید.", ErrorType.ConcurrencyConflict);
         }
         catch (DbUpdateException exception) when (exception.InnerException is SqliteException { SqliteExtendedErrorCode: 2067 })
         {
